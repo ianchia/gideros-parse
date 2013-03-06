@@ -1,0 +1,13 @@
+<project>
+ <properties autorotation="3" fps="60" scaleMode="3" mouseToTouch="1" iosDevice="0" packageName="com.yourdomain.yourapp" logicalHeight="1024" logicalWidth="768" mouseTouchOrder="0" retinaDisplay="0" touchToMouse="1" assetsOnly="1" orientation="0" architecture="0">
+  <imageScales/>
+ </properties>
+ <file source="Tahoma.ttf"/>
+ <folder name="Wax">
+  <file source="Wax/waxClass.lua"/>
+  <file source="Wax/structs.lua"/>
+  <file source="Wax/enums.lua"/>
+ </folder>
+ <file source="init.lua"/>
+ <file source="main.lua"/>
+</project>
