@@ -25,3 +25,5 @@ c) Note you should additionally set the XCode > Target > Build Settings > Other 
 
 d) The code for the "Test the SDK" section is provided below. Just run the "parseSet()" function then confirm you have set it up correctly.
 
+##3) Set your Facebook AppID in main.lua
+
