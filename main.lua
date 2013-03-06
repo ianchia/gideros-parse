@@ -19,6 +19,8 @@ b) Follow the quick start guide provided by Parse (https://www.parse.com/apps/qu
 c) Note you should additionally set the XCode > Target > Build Settings > Other Linker Flags to use "-all_load -ObjC"
 d) The code for the "Test the SDK" section is provided below. Just run the "parseSet()" function then confirm you have set it up correctly.
 
+3) Set your Facebook App ID below.
+
 
 ## MIT License: Copyright (C) 2013. Jamie Hill, Push Poke
 
@@ -37,6 +39,9 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 --]]
+
+-- set your Facebook appId here
+fbAppId = "183814218409168"
 
 -- test setting data to Parse
 function parseSet(className, key, value)
@@ -118,7 +123,7 @@ function DefaultSettingsViewController:viewDidAppear()
 		logInViewController:setDelegate(self)
 		
 		-- init for Facebook
-		PFFacebookUtils:initializeWithApplicationId("183814218409168")
+		PFFacebookUtils:initializeWithApplicationId(fbAppId)
 		local fbPerms = {"user_about_me", "user_location", "friends_about_me"}
 		logInViewController:setFacebookPermissions(fbPerms)
 		
@@ -133,18 +138,6 @@ function DefaultSettingsViewController:viewDidAppear()
 		
 		-- display
 		self:presentViewController_animated_completion(logInViewController, true, nil)
-	else
-		local username = parseUser:username()
-		if username then
-			print("PFUser["..username.."] currently logged in")
-			local alertTitle = "Welcome!"
-			local alertMessage = "You are currently logged in as "..username
-			local alertButton = "Logout"
-			local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-			alertView:show()
-		end
-		print("logging user out so flow can be re-tested")
-		PFUser:logOut()
 	end
 end
 
@@ -301,10 +294,26 @@ bg:addChild(loginText)
 stage:addChild(bg)
 
 function startParseFlow(button, event)
-	-- display Parse login view
-	local defView = DefaultSettingsViewController:init()
-	getRootViewController():view():addSubview(defView:view())
 	event:stopPropagation()
+
+	-- check if already logged in
+	local puser = PFUser:currentUser()
+	if puser then
+		-- already logged in
+		local username = puser:username()
+		print("PFUser["..username.."] currently logged in")
+		local alertTitle = "Welcome!"
+		local alertMessage = "You are currently logged in as "..username
+		local alertButton = "Logout"
+		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+		alertView:show()
+		print("logging user out so flow can be re-tested")
+		PFUser:logOut()
+	else
+		-- display Parse login view
+		local defView = DefaultSettingsViewController:init()
+		getRootViewController():view():addSubview(defView:view())
+	end
 end
 
 function removeStartListener()
