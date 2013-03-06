@@ -43,6 +43,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 -- set your Facebook appId here
 fbAppId = "183814218409168"
 
+require "DefaultSettingsViewController"
+
+--
+-- FUNCTIONS FOR TESTING PARSE INTEGRATION
+--
+
 -- test setting data to Parse
 function parseSet(className, key, value)
 	-- set testing defaults if not specified
@@ -89,186 +95,6 @@ function fbFetch()
         end):asVoidTriadicBlock()
         
 	request:startWithCompletionHandler(handler)
-end
-
-
---
--- WAX Classes
---
-waxClass({"DefaultSettingsViewController", UIViewController, protocols={"PFLogInViewControllerDelegate", "PFSignUpViewControllerDelegate"}})
-waxClass({"CustomPFLogInViewController", PFLogInViewController})
-waxClass({"CustomPFSignUpViewController", PFSignUpViewController})
-
-
---
--- DefaultSettingsViewController - main view controller
---
-function DefaultSettingsViewController:init()
-	self.super:init()
-	return self
-end
-
-function DefaultSettingsViewController:viewDidAppear()
-	self.super:viewDidAppear()
-	
-	local parseUser = PFUser:currentUser()
-	if not parseUser then
-		print("initializing view...")
-		removeStartListener()
-		-- view element enums
-		local viewEnums = {none=0, userpass=1, forgotten=2, login=4, facebook=8, twitter=16, signup=32, dismiss=64, default=103}
-		
-		-- create login view controller
-		local logInViewController = CustomPFLogInViewController:init()
-		logInViewController:setDelegate(self)
-		
-		-- init for Facebook
-		PFFacebookUtils:initializeWithApplicationId(fbAppId)
-		local fbPerms = {"user_about_me", "user_location", "friends_about_me"}
-		logInViewController:setFacebookPermissions(fbPerms)
-		
-		-- set UI buttons we want to display
-		-- in this case, default plus Facebook
-		logInViewController:setFields(viewEnums.userpass + viewEnums.login + viewEnums.facebook + viewEnums.signup + viewEnums.dismiss + viewEnums.forgotten)
-		
-		-- create the signup view controller
-		local signUpViewController = CustomPFSignUpViewController:init()
-		signUpViewController:setDelegate(self)
-		logInViewController:setSignUpController(signUpViewController)
-		
-		-- display
-		self:presentViewController_animated_completion(logInViewController, true, nil)
-	end
-end
-
---
--- LOG IN VIEW CONTROLLER DELEGATE
---
-
--- sent to the delegate to determine whether to submit login information
-function DefaultSettingsViewController:logInViewController_shouldBeginLogInWithUsername_password(self, username, password)
-	if not username or username == "" or not password or password == "" then
-		-- display alert dialog
-		print("fields were not filled out")
-		local alertTitle = "Missing Information"
-		local alertMessage = "Make sure you fill out all of the information!"
-		local alertButton = "OK"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-		alertView:show()
-		return false
-	else
-		return true
-	end
-end
-
--- sent to the delegate when the user is logged in
-function DefaultSettingsViewController:logInViewController_didLogInUser(self, user)
-	print("user successfully logged in!")
-	local alertTitle = "Success!"
-	local alertMessage = "You are now logged in."
-	local alertButton = "OK"
-	local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-	alertView:show()
-	-- reenable flow button
-	addStartListener()
-	
-	-- hide login view
-	self:view():removeFromSuperview()
-	--self:dismissViewControllerAnimated_completion(true, nil)
-end
-
--- sent to the delegate when the user fails to login
-function DefaultSettingsViewController:logInViewController_didFailToLogInWithError(self, error)
-	print("user failed to log in...")
-end
-
-function DefaultSettingsViewController:logInViewControllerDidCancelLogIn(self)
-	print("user dismissed login view")
-	-- hide login view
-	addStartListener()
-	self:view():removeFromSuperview()
-end
-
---
--- SIGN UP VIEW CONTROLLER DELEGATE
---
-
--- sent to the delegate to determine whether to submit signup information
-function DefaultSettingsViewController:signUpViewController_shouldBeginSignUp(self, info)
-	local infoComplete = true
-	
-	-- loop through submitted data to ensure it was filled out before submitting
-	for k,v in pairs(info) do
-		if v == "" then
-			infoComplete = false
-			break
-		end
-	end
-	
-	if not infoComplete then
-		print("fields were not filled out")
-		-- display alert dialog
-		local alertTitle = "Missing Information"
-		local alertMessage = "Make sure you fill out all of the information!"
-		local alertButton = "OK"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-		alertView:show()
-	end
-	
-	return infoComplete
-end
-
--- sent to the delegate when the signup is successful
-function DefaultSettingsViewController:signUpViewController_didSignUpUser(self, user)
-	print("user successfull signed up!")
-	-- hide signup view
-	self:dismissViewControllerAnimated_completion(true, nil)
-end
-
--- sent to the delegate when the user signup fails
-function DefaultSettingsViewController:signUpViewController_didFailToSignUpWithError(self, error)
-	print("user failed to sign up...")
-end
-
--- sent to the delegate when the user cancels the signup view
-function DefaultSettingsViewController:signUpViewControllerDidCancelSignUp(self)
-	print("user dismissed signup view")
-	-- signup view will be hidden
-end
-
---
--- CustomPFLogInViewController - allows custom control over display of UI elements for the login screen
---
-function CustomPFLogInViewController:viewDidLoad()
-	self.super:viewDidLoad()
-	
-	-- custom UI
-	print("displaying custom login view")
-	local signupText = "Sign Up Mate!"
-	self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
-	self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
-end
-
-function CustomPFLogInViewController:viewDidLayoutSubviews()
-	-- custom button layout
-	self:logInView():signUpButton():setFrame(CGRect(35,385,250,40))
-end
-
---
--- CustomPFSignUpViewController - allows custom control over display of UI elements for the signup screen
---
-function CustomPFSignUpViewController:viewDidLoad()
-	self.super:viewDidLoad()
-	
-	-- custom UI
-	print("displaying custom signup view")
-	local signupText = "Sign Up Mate!"
-	self:signUpView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
-	self:signUpView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
-end
-
-function CustomPFLogInViewController:viewDidLayoutSubviews()
-	-- custom button layout
 end
 
 
@@ -324,5 +150,5 @@ function addStartListener()
 	bg:addEventListener(Event.MOUSE_UP, startParseFlow, bg)
 end
 
+-- add tap to start listener
 addStartListener()
---parseSet()
