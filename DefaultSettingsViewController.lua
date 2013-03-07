@@ -115,6 +115,7 @@ function DefaultSettingsViewController:logInViewControllerDidCancelLogIn(self)
 	--self:view():removeFromSuperview()
 end
 
+
 --
 -- SIGN UP VIEW CONTROLLER DELEGATE
 --
@@ -170,6 +171,14 @@ function CustomPFLogInViewController:viewDidLoad()
 	
 	-- custom UI
 	print("displaying custom login view")
+	
+	local imgPath = getPathForFile("|R|logo.png")
+	local logoImg = UIImage:imageWithContentsOfFile(imgPath)
+	if logoImg ~= nil then
+		local imgView = UIImageView:initWithImage(logoImg)
+		self:logInView():setLogo(imgView)
+	end
+	
 	local signupText = "Sign Up Mate!"
 	self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
 	self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
@@ -188,6 +197,14 @@ function CustomPFSignUpViewController:viewDidLoad()
 	
 	-- custom UI
 	print("displaying custom signup view")
+	
+	local imgPath = getPathForFile("|R|logo.png")
+	local logoImg = UIImage:imageWithContentsOfFile(imgPath)
+	if logoImg ~= nil then
+		local imgView = UIImageView:initWithImage(logoImg)
+		self:signUpView():setLogo(imgView)
+	end
+	
 	local signupText = "Sign Up Mate!"
 	self:signUpView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
 	self:signUpView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)

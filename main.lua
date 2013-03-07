@@ -137,7 +137,7 @@ function startParseFlow(button, event)
 		PFUser:logOut()
 	else
 		-- display Parse login view
-		local defView = DefaultSettingsViewController:init()
+		defView = DefaultSettingsViewController:init()		
 		getRootViewController():view():addSubview(defView:view())
 	end
 end
