@@ -17,7 +17,7 @@ a) Sign up at http://parse.com/
 b) Follow the quick start guide provided by Parse (https://www.parse.com/apps/quickstart)
  - Select iOS, existing project, your app from downdown.
 c) Note you should additionally set the XCode > Target > Build Settings > Other Linker Flags to use "-all_load -ObjC"
-d) The code for the "Test the SDK" section is provided below. Just run the "parseSet()" function then confirm you have set it up correctly.
+d) To confirm Parse is setup properly, run ParseLib:set("TestObject", "foo", "bar")
 
 3) Set your Facebook App ID below.
 
@@ -43,60 +43,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 -- set your Facebook appId here
 fbAppId = "183814218409168"
 
-require "DefaultSettingsViewController"
+require "ParseLib"
 
---
--- FUNCTIONS FOR TESTING PARSE INTEGRATION
---
-
--- test setting data to Parse
-function parseSet(className, key, value)
-	-- set testing defaults if not specified
-	if not className then className = "TestObject" end
-	if not key then key = "foo" end
-	if not value then value = "bar" end
-	
-	-- save key value to Parse
-	local testObj = PFObject:objectWithClassName(className)
-	testObj:setObject_forKey(value, key)
-	testObj:save()
-end
-
--- test fetching data from a logged in Facebook user via Parse
--- requires the user to first be logged in using the social integration
-function fbFetch()
-	local user = {}
-
-	-- Create request for user's Facebook data
-    local requestPath = "me/?fields=name,location,gender,birthday,relationship_status"
-     
-    -- Send request to Facebook
-    local request = PF_FBRequest:requestForGraphPath(requestPath)
-	local handler = toobjc(
-        function(connection, result, error)			
-            if not error then
-				print("Successful Graph Request")
-				
-                local userData = result
-                user.facebookId = userData.id
-				user.name = userData.name
-				user.gender = userData.gender
-				user.birthday = userData.birthday
-				user.relationship = userData.relationship_status
-				
-				-- fetch profile image
-				user.profileImageUrl = "https://graph.facebook.com/"..user.facebookId.."/picture?type=large&return_ssl_resources=1"
-				
-				print("fbID="..user.facebookId..", name="..user.name..", gender="..user.gender..", birthday="..user.birthday..", relationship="..user.relationship)
-			else
-				print("Graph API error")
-				print(error)
-            end
-        end):asVoidTriadicBlock()
-        
-	request:startWithCompletionHandler(handler)
-end
-
+-- init Parse library
+Parse = ParseLib.new(fbAppId)
 
 --
 -- MAIN
@@ -119,35 +69,37 @@ loginText:setPosition(w/2 - loginText:getWidth()/2, h/2 - loginText:getHeight()/
 bg:addChild(loginText)
 stage:addChild(bg)
 
-function startParseFlow(button, event)
+function bg:startParseFlow(event)
 	event:stopPropagation()
 
-	-- check if already logged in
-	local puser = PFUser:currentUser()
-	if puser then
-		-- already logged in
-		local username = puser:username()
-		print("PFUser["..username.."] currently logged in")
-		local alertTitle = "Welcome!"
-		local alertMessage = "You are currently logged in as "..username
-		local alertButton = "Logout"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-		alertView:show()
-		print("logging user out so flow can be re-tested")
-		PFUser:logOut()
-	else
-		-- display Parse login view
-		defView = DefaultSettingsViewController:init()		
-		getRootViewController():view():addSubview(defView:view())
+	local started = Parse:startLogin()
+	if started then
+		removeStartListener()
 	end
 end
 
+function bg:endParseFlow(event)
+	event:stopPropagation()
+	
+	addStartListener()
+end
+
 function removeStartListener()
-	bg:removeEventListener(Event.MOUSE_UP, startParseFlow, bg)
+	if bg:hasEventListener(Event.MOUSE_UP) then
+		bg:removeEventListener(Event.MOUSE_UP, bg.startParseFlow, bg)
+	end
 end
 
 function addStartListener()
-	bg:addEventListener(Event.MOUSE_UP, startParseFlow, bg)
+	if not bg:hasEventListener(Event.MOUSE_UP) then
+		bg:addEventListener(Event.MOUSE_UP, bg.startParseFlow, bg)
+	end
+	if not Parse.eventDispatcher:hasEventListener("PFLoginComplete") then
+		Parse.eventDispatcher:addEventListener("PFLoginComplete", bg.endParseFlow, bg)
+	end
+	if not Parse.eventDispatcher:hasEventListener("PFLoginCancelled") then
+		Parse.eventDispatcher:addEventListener("PFLoginCancelled", bg.endParseFlow, bg)
+	end
 end
 
 -- add tap to start listener

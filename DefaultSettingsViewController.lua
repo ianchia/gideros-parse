@@ -27,41 +27,49 @@ waxClass({"CustomPFSignUpViewController", PFSignUpViewController})
 --
 -- DefaultSettingsViewController - main view controller
 --
-function DefaultSettingsViewController:init()
+function DefaultSettingsViewController:init(dispatcher)
 	self.super:init()
+	self.dismissed = false
+	self.dispatcher = dispatcher
 	return self
 end
 
 function DefaultSettingsViewController:viewDidAppear()
 	self.super:viewDidAppear()
+	self.pfuser = PFUser:currentUser()
 	
-	local parseUser = PFUser:currentUser()
-	if not parseUser then
+	if not self.pfuser and not self.dismissed then
 		print("initializing view...")
-		removeStartListener()
 		-- view element enums
 		local viewEnums = {none=0, userpass=1, forgotten=2, login=4, facebook=8, twitter=16, signup=32, dismiss=64, default=103}
 		
 		-- create login view controller
-		local logInViewController = CustomPFLogInViewController:init()
-		logInViewController:setDelegate(self)
+		self.logInViewController = CustomPFLogInViewController:init()
+		self.logInViewController:setDelegate(self)
 		
 		-- init for Facebook
-		PFFacebookUtils:initializeWithApplicationId(fbAppId)
 		local fbPerms = {"user_about_me", "user_location", "friends_about_me"}
-		logInViewController:setFacebookPermissions(fbPerms)
+		self.logInViewController:setFacebookPermissions(fbPerms)
 		
 		-- set UI buttons we want to display
 		-- in this case, default plus Facebook
-		logInViewController:setFields(viewEnums.userpass + viewEnums.login + viewEnums.facebook + viewEnums.signup + viewEnums.dismiss + viewEnums.forgotten)
+		self.logInViewController:setFields(viewEnums.userpass + viewEnums.login + viewEnums.facebook + viewEnums.signup + viewEnums.dismiss + viewEnums.forgotten)
 		
 		-- create the signup view controller
-		local signUpViewController = CustomPFSignUpViewController:init()
-		signUpViewController:setDelegate(self)
-		logInViewController:setSignUpController(signUpViewController)
+		self.signUpViewController = CustomPFSignUpViewController:init()
+		self.signUpViewController:setDelegate(self)
+		self.logInViewController:setSignUpController(self.signUpViewController)
 		
 		-- display
-		self:presentViewController_animated_completion(logInViewController, true, nil)
+		self:presentViewController_animated_completion(self.logInViewController, true, nil)
+	end
+end
+
+function DefaultSettingsViewController:isViewVisible()
+	if self:isViewLoaded() and self:view():window() then
+		return true
+	else
+		return false
 	end
 end
 
@@ -93,11 +101,15 @@ function DefaultSettingsViewController:logInViewController_didLogInUser(self, us
 	local alertButton = "OK"
 	local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
 	alertView:show()
-	-- reenable flow button
-	addStartListener()
-	
+
 	-- hide login view
-	self:dismissViewControllerAnimated_completion(true, nil)
+	local handler = toobjc(
+        function()
+            local completeEvent = Event.new("PFLoginComplete")
+			self:delegate().dispatcher:dispatchEvent(completeEvent)
+        end):asVoidNiladicBlock()
+	
+	self:dismissViewControllerAnimated_completion(true, handler)
 end
 
 -- sent to the delegate when the user fails to login
@@ -107,12 +119,11 @@ end
 
 function DefaultSettingsViewController:logInViewControllerDidCancelLogIn(self)
 	print("user dismissed login view")
-	
-	-- reenable flow button
-	addStartListener()
-
-	-- remove login view, else it'll autopop
-	--self:view():removeFromSuperview()
+	-- mark as dismissed
+	self:delegate().dismissed = true
+	-- send cancelled event
+	local completeEvent = Event.new("PFLoginCancelled")
+	self:delegate().dispatcher:dispatchEvent(completeEvent)
 end
 
 

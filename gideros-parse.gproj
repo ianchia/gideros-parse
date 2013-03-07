@@ -2,6 +2,7 @@
  <properties autorotation="3" fps="60" scaleMode="3" mouseToTouch="1" iosDevice="0" packageName="com.yourdomain.yourapp" logicalHeight="1024" logicalWidth="768" mouseTouchOrder="0" retinaDisplay="0" touchToMouse="1" assetsOnly="1" orientation="0" architecture="0">
   <imageScales/>
  </properties>
+ <file source="ParseLib.lua"/>
  <file source="logo.png"/>
  <file source="DefaultSettingsViewController.lua"/>
  <file source="Tahoma.ttf"/>
@@ -13,7 +14,12 @@
  <file source="init.lua"/>
  <file source="main.lua"/>
  <dependency from="DefaultSettingsViewController.lua" to="Wax/structs.lua"/>
+ <dependency from="DefaultSettingsViewController.lua" to="init.lua"/>
  <dependency from="DefaultSettingsViewController.lua" to="Wax/enums.lua"/>
  <dependency from="DefaultSettingsViewController.lua" to="Wax/waxClass.lua"/>
- <dependency from="DefaultSettingsViewController.lua" to="init.lua"/>
+ <dependency from="ParseLib.lua" to="DefaultSettingsViewController.lua"/>
+ <dependency from="ParseLib.lua" to="Wax/structs.lua"/>
+ <dependency from="ParseLib.lua" to="init.lua"/>
+ <dependency from="ParseLib.lua" to="Wax/enums.lua"/>
+ <dependency from="ParseLib.lua" to="Wax/waxClass.lua"/>
 </project>
