@@ -23,7 +23,8 @@ b) Follow the quick start guide provided by Parse (https://www.parse.com/apps/qu
 
 c) Note you should additionally set the XCode > Target > Build Settings > Other Linker Flags to use "-all_load -ObjC"
 
-d) The code for the "Test the SDK" section is provided below. Just run the "parseSet()" function then confirm you have set it up correctly.
+d) To confirm Parse is setup properly, run ParseLib:set("TestObject", "foo", "bar")
 
 ##3) Set your Facebook AppID in main.lua
 
+At the top of main.lua, set "fbAppId" to your Facebook App ID

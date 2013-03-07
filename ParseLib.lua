@@ -1,7 +1,8 @@
 --[[
 ParseLib
 - provides Lua hooks into the ParseSDK via BhWax
-
+- dispatches "PFLoginComplete" event from ParseLib.eventDispatcher on successful login
+- dispatches "PFLoginCancelled" event from ParseLib.eventDispatcher on login screen dismiss button click
 
 ## MIT License: Copyright (C) 2013. Jamie Hill, Push Poke
 
