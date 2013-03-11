@@ -4,7 +4,7 @@ Parse integration for Gideros using BhWax
 
 This module provides social integration code for using the Parse SDK with Gideros, via BhWax.
 
-You will need to have both BhWax and the Parse SDK for iOS setup for use with the Gidero iOS Player.
+You will need to have both BhWax (the very latest code) and the Parse SDK for iOS setup for use with the Gidero iOS Player.
 
 1) BhWax:
 Wax (https://github.com/probablycorey/wax) is a Lua <-> Objective C bridge by Corey Johnson. A modified version of this for
@@ -108,21 +108,26 @@ end
 
 -- Test object creation functions
 function endSave(handler, event)
-	-- used for async save completion, but currently disabled due to bug
 	print("SAVE COMPLETED")
 	Parse.eventDispatcher:removeEventListener("PFObjectSaveComplete", handler, handler)
 	
-	print(event.success)
-	print(event.error)
-	print(event.objectId)
+	-- check for error
+	if event.error then
+		print(event.error)
+	else
+		print(event.success)
+		print(event.object:objectId())
+	end
 end
 
 function testObject()
+	Parse.eventDispatcher:addEventListener("PFObjectSaveComplete", endSave, endSave)
+
 	print("Saving 'TestObject' with name='Joe Blogs', level=23")
 	local obj = Parse:createObj("TestObject")
 	Parse:addToObj(obj, "name", "Joe Blogs")
 	Parse:addToObj(obj, "level", 23)
-	local success = Parse:saveObj(obj, false)
+	local success = Parse:saveObj(obj)
 	print(success)
 end
 

@@ -3,8 +3,8 @@ ParseLib
 - provides Lua hooks into the ParseSDK via BhWax
 - dispatches "PFLoginComplete" event from ParseLib.eventDispatcher on successful login
 - dispatches "PFLoginCancelled" event from ParseLib.eventDispatcher on login screen dismiss button click
-- dispatches "PFObjectSaveComplete" event (with success, error, objectId fields) when an async object save is complete
-- dispatches "PFQueryComplete" event when a query has completed
+- dispatches "PFObjectSaveComplete" event (with success, error, object fields) when an async object save is complete
+- dispatches "PFQueryComplete" event (with error, objects fields) when a query has completed
 
 
 ## MIT License: Copyright (C) 2013. Jamie Hill, Push Poke
@@ -88,18 +88,14 @@ function ParseLib:deleteObj(obj)
 end
 
 -- save PFObject
--- NOTE: async saving is currently disabled.
 -- @param PFObject	The object to save
--- [@param] Boolean		Whether to save the object on a background thread. Default false. 
+-- [@param] Boolean		Whether to save the object on a background thread (async). Default true. 
 -- @return Boolean	Whether the object was saved. Always true for async - need to listen for "PFObjectSaveComplete" event.
 function ParseLib:saveObj(obj, async)
 	if async == nil then
-		-- default to sync save
-		async = false
+		-- default to async save
+		async = true
 	end
-	
-	--TODO: fix block handler issue preventing ability to use async save. For now, force async off.
-	async = false
 	
 	if async then
 		-- block handler when background thread completes
@@ -109,9 +105,9 @@ function ParseLib:saveObj(obj, async)
 				local saveEvent = Event.new("PFObjectSaveComplete")
 				saveEvent.success = succeeded
 				saveEvent.error = error
-				saveEvent.objectId = obj:objectId()
+				saveEvent.object = obj
 				self.eventDispatcher:dispatchEvent(saveEvent)
-			end):asVoidDyadicBlock()
+			end):asVoidDyadicBlockBO()
 		obj:saveInBackgroundWithBlock(handler)
 		return true
 	else

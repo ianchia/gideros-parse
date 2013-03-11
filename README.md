@@ -5,7 +5,7 @@ gideros-parse
 
 This module provides social integration code for using the Parse SDK with Gideros, via BhWax.
 
-You will need to have both BhWax and the Parse SDK for iOS setup for use with the Gidero iOS Player.
+You will need to have both BhWax (the very latest) and the Parse SDK for iOS setup for use with the Gidero iOS Player.
 
 ##Installation and Setup
 
@@ -15,6 +15,10 @@ use with Gideros (http://giderosmobile.com) was developed by Andy Bower called B
 
 You can read more about BhWax, including instructions on how to build the plugin, on Andy's blog post 
 (http://bowerhaus.eu/blog/files/hot_wax.html).
+
+a) Install BhWax as per the instructions on http://bowerhaus.eu/blog/files/hot_wax.html
+
+b) You will need to update to the BhWax.mm included here. This includes additional Block functions you'll need.
 
 ###2) Parse SDK for iOS:
 a) Sign up at http://parse.com/
