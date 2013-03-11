@@ -16,8 +16,11 @@ You can read more about BhWax, including instructions on how to build the plugin
 a) Sign up at http://parse.com/
 b) Follow the quick start guide provided by Parse (https://www.parse.com/apps/quickstart)
  - Select iOS, existing project, your app from downdown.
-c) Note you should additionally set the XCode > Target > Build Settings > Other Linker Flags to use "-all_load -ObjC"
-d) To confirm Parse is setup properly, run ParseLib:set("TestObject", "foo", "bar")
+c) Add the following to ProtocolLoader.h (from BhWax):
+		@protocol(PFLogInViewControllerDelegate) &&
+        @protocol(PFSignUpViewControllerDelegate) &&
+d) Note you should additionally set the XCode > Target > Build Settings > Other Linker Flags to use "-all_load -ObjC"
+e) To confirm Parse is setup properly, run ParseLib:test(), then confirm on the Parse web site checker
 
 3) Set your Facebook App ID below.
 
@@ -69,6 +72,7 @@ loginText:setPosition(w/2 - loginText:getWidth()/2, h/2 - loginText:getHeight()/
 bg:addChild(loginText)
 stage:addChild(bg)
 
+-- login / signup flow functions
 function bg:startParseFlow(event)
 	event:stopPropagation()
 
@@ -102,5 +106,66 @@ function addStartListener()
 	end
 end
 
--- add tap to start listener
+-- Test object creation functions
+function endSave(handler, event)
+	-- used for async save completion, but currently disabled due to bug
+	print("SAVE COMPLETED")
+	Parse.eventDispatcher:removeEventListener("PFObjectSaveComplete", handler, handler)
+	
+	print(event.success)
+	print(event.error)
+	print(event.objectId)
+end
+
+function testObject()
+	print("Saving 'TestObject' with name='Joe Blogs', level=23")
+	local obj = Parse:createObj("TestObject")
+	Parse:addToObj(obj, "name", "Joe Blogs")
+	Parse:addToObj(obj, "level", 23)
+	local success = Parse:saveObj(obj, false)
+	print(success)
+end
+
+-- Test object query functions
+function endQuery(handler, event)
+	print("QUERY COMPLETED")
+	Parse.eventDispatcher:removeEventListener("PFQueryComplete", handler, handler)
+	
+	-- check for error
+	if event.error then
+		-- Parse error, usually due to type mismatch on columns in query
+		print(event.error)
+	else
+		-- output result info
+		if type(event.objects) == "table" then
+			print("Received "..#event.objects.." results:")
+			for i,v in ipairs(event.objects) do
+				print(v:objectId())
+			end
+		else
+			print("No Results Received")
+		end
+	end
+end
+
+function testQuery()
+	Parse.eventDispatcher:addEventListener("PFQueryComplete", endQuery, endQuery)
+	print("SENDING QUERY...")
+	local query = {
+		{where="level", type="greaterThan", value=20},
+		{where="name", type="equalTo", value="Joe Blogs"},
+	}
+	
+	-- find objects matching query ordered by createdAt, limit 3 results
+	local res = Parse:query("TestObject", query, {{type="desc",key="createdAt"}}, 3)
+	print(res)
+end
+
+-- add tap to start listener for login / signup flow
 addStartListener()
+
+-- save an object
+testObject()
+
+-- query for objects
+testQuery()
