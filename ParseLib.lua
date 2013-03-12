@@ -27,13 +27,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 require "DefaultSettingsViewController"
 
+-- Cache policy enums
+kPFCachePolicyIgnoreCache = 0
+kPFCachePolicyCacheOnly = 1
+kPFCachePolicyNetworkOnly = 2
+kPFCachePolicyCacheElseNetwork = 3
+kPFCachePolicyNetworkElseCache = 4
+kPFCachePolicyCacheThenNetwork = 5
+
+
 ParseLib = Core.class()
 
 -- init
-function ParseLib:init(facebookAppId)
-	self.facebookAppId = facebookAppId
-	PFFacebookUtils:initializeWithApplicationId(self.facebookAppId)
+-- [@param] String	Your Facebook AppID
+-- [@param] String	Cache policy to use for queries (see setCachePolicy function)
+-- [@param] Number	Max age for query cache
+function ParseLib:init(facebookAppId, cachePolicy, cacheTTL)
 	self.pfuser = self:currentUser()
+
+	-- setup facebook
+	if facebookAppId then
+		self.facebookAppId = facebookAppId
+		PFFacebookUtils:initializeWithApplicationId(self.facebookAppId)
+	end
+		
+	-- set default cache policy (Parse default to "ignoreCache")
+	if cachePolicy ~= nil then
+		self:setCachePolicy(cachePolicy)
+	end
+	
+	-- set default cache TTL
+	if cacheTTL ~= nil then
+		self:setCacheTTL(cacheTTL)
+	end
 	
 	-- dispatcher for handling parse events
 	myDis = Core.class(EventDispatcher)
@@ -115,6 +141,43 @@ function ParseLib:saveObj(obj, async)
 	end
 end
 
+-- set cache policy for queries
+-- @param String	cache policy to use. One of ("ignoreCache", "cacheOnly", "networkOnly", "cacheElseNetwork", "networkElseCache", "cacheThenNetwork").
+--					defaults to ignoreCache
+-- @return Boolean	whether or not the cache policy was set
+function ParseLib:setCachePolicy(policy)
+	if policy == "ignoreCache" then
+		self.cachePolicy = kPFCachePolicyIgnoreCache
+	elseif policy == "cacheOnly" then
+		self.cachePolicy = kPFCachePolicyCacheOnly
+	elseif policy == "networkOnly" then
+		self.cachePolicy = kPFCachePolicyNetworkOnly
+	elseif policy == "cacheElseNetwork" then
+		self.cachePolicy = kPFCachePolicyCacheElseNetwork
+	elseif policy == "networkElseCache" then
+		self.cachePolicy = kPFCachePolicyNetworkElseCache
+	elseif policy == "cacheThenNetwork" then
+		-- note: this will cause the PFQueryComplete event to fire twice, once for cache results, then once for network results
+		self.cachePolicy = kPFCachePolicyCacheThenNetwork
+	else
+		print("Error: invalid value specified for cache policy.")
+		return false
+	end
+	return true
+end
+
+-- set cache TTL for query results
+-- note: Parse takes care of automatically flushing the cache if it takes up too much space
+-- @param Number	age in seconds to cache results on disk
+function ParseLib:setCacheTTL(age)
+	self.maxCacheAge = age
+end
+
+-- clear query cache (for ALL queries)
+function ParseLib:clearQueryCache()
+	PFQuery:clearAllCachedResults()
+end
+
 -- query for PFObjects
 -- valid query type values are: "equalTo", "notEqualTo", "lessThan", "lessThanOrEqualTo", "greaterThan", "greaterThanOrEqualTo", "containedIn", "notContainedIn"
 -- @param String	className of the objects to query
@@ -125,6 +188,7 @@ end
 function ParseLib:query(className, queries, sortKey, limit)
 	if not className or not queries or type(queries) ~= "table" then
 		-- invalid parameters
+		print("Error: bad parameters specified for query")
 		return false
 	end
 	
@@ -189,6 +253,16 @@ function ParseLib:query(className, queries, sortKey, limit)
 	-- valid limits are 1 to 1000
 	if limit and limit > 0 and limit < 1001 then
 		query:setLimit(limit)
+	end
+	
+	-- set cache policy
+	if self.cachePolicy ~= nil then
+		query:setCachePolicy(self.cachePolicy)
+	end
+	
+	-- set cache TTL
+	if self.maxCacheAge ~= nil then
+		query:setMaxCacheAge(self.maxCacheAge)
 	end
 	
 	-- block handler when background thread completes
