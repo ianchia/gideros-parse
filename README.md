@@ -36,9 +36,11 @@ d) Note you should additionally set the XCode > Target > Build Settings > Other 
 
 e) To confirm Parse is setup properly, run ParseLib:test(), then confirm on the Parse web site checker
 
-###3) Set your Facebook AppID in main.lua
+###3) [optional] Setup Facebook and Twitter authentication
 
-At the top of main.lua, set "fbAppId" to your Facebook App ID
+a) Setup a Facebook application and add your App ID in "fbAppId" near the top of main.lua
+
+b) Setup a Twitter application and add your consumer key and secret in "twitKey" and "twitSecret" near the top of main.lua
 
 ##Usage
 

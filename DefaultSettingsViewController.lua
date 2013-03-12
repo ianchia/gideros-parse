@@ -27,10 +27,12 @@ waxClass({"CustomPFSignUpViewController", PFSignUpViewController})
 --
 -- DefaultSettingsViewController - main view controller
 --
-function DefaultSettingsViewController:init(dispatcher)
+function DefaultSettingsViewController:init(dispatcher, useFacebook, useTwitter)
 	self.super:init()
 	self.dismissed = false
 	self.dispatcher = dispatcher
+	self.useFacebook = useFacebook
+	self.useTwitter = useTwitter
 	return self
 end
 
@@ -48,12 +50,21 @@ function DefaultSettingsViewController:viewDidAppear()
 		self.logInViewController:setDelegate(self)
 		
 		-- init for Facebook
-		local fbPerms = {"user_about_me", "user_location", "friends_about_me"}
-		self.logInViewController:setFacebookPermissions(fbPerms)
+		if self.useFacebook then
+			local fbPerms = {"user_about_me", "user_location", "friends_about_me"}
+			self.logInViewController:setFacebookPermissions(fbPerms)
+		end
 		
 		-- set UI buttons we want to display
-		-- in this case, default plus Facebook
-		self.logInViewController:setFields(viewEnums.userpass + viewEnums.login + viewEnums.facebook + viewEnums.signup + viewEnums.dismiss + viewEnums.forgotten)
+		-- in this case, default plus Facebook and Twitter if enabled
+		local viewDefaults = viewEnums.userpass + viewEnums.login + viewEnums.signup + viewEnums.dismiss + viewEnums.forgotten
+		if self.useFacebook then
+			viewDefaults = viewDefaults + viewEnums.facebook
+		end
+		if self.useTwitter then
+			viewDefaults = viewDefaults + viewEnums.twitter
+		end
+		self.logInViewController:setFields(viewDefaults)
 		
 		-- create the signup view controller
 		self.signUpViewController = CustomPFSignUpViewController:init()

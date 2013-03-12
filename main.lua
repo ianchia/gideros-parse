@@ -22,7 +22,9 @@ c) Add the following to ProtocolLoader.h (from BhWax):
 d) Note you should additionally set the XCode > Target > Build Settings > Other Linker Flags to use "-all_load -ObjC"
 e) To confirm Parse is setup properly, run ParseLib:test(), then confirm on the Parse web site checker
 
-3) Set your Facebook App ID below.
+3) [optional] Setup Facebook and Twitter authentication
+a) Setup a Facebook application and add your App ID in "fbAppId" below.
+b) Setup a Twitter application and add your consumer key and secret in "twitKey" and "twitSecret" below.
 
 
 ## MIT License: Copyright (C) 2013. Jamie Hill, Push Poke
@@ -43,13 +45,15 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 --]]
 
--- set your Facebook appId here
-fbAppId = "183814218409168"
+-- set your Facebook and Twitter credentials here
+fbAppId = nil
+twitKey = nil
+twitSecret = nil
 
 require "ParseLib"
 
 -- init Parse library
-Parse = ParseLib.new(fbAppId)
+Parse = ParseLib.new(fbAppId, twitKey, twitSecret)
 
 --
 -- MAIN

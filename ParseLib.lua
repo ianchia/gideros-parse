@@ -40,15 +40,27 @@ ParseLib = Core.class()
 
 -- init
 -- [@param] String	Your Facebook AppID
+-- [@param] String	Your Twitter consumer key
+-- [@param] String	Your Twitter consumer secret
 -- [@param] String	Cache policy to use for queries (see setCachePolicy function)
 -- [@param] Number	Max age for query cache
-function ParseLib:init(facebookAppId, cachePolicy, cacheTTL)
+function ParseLib:init(facebookAppId, twitterKey, twitterSecret, cachePolicy, cacheTTL)
 	self.pfuser = self:currentUser()
 
 	-- setup facebook
 	if facebookAppId then
-		self.facebookAppId = facebookAppId
-		PFFacebookUtils:initializeWithApplicationId(self.facebookAppId)
+		self.useFacebook = true
+		PFFacebookUtils:initializeWithApplicationId(facebookAppId)
+	else
+		self.useFacebook = false
+	end
+	
+	-- setup twitter
+	if twitterKey and twitterSecret then
+		self.useTwitter = true
+		PFTwitterUtils:initializeWithConsumerKey_consumerSecret(twitterKey, twitterSecret)
+	else
+		self.useTwitter = false
 	end
 		
 	-- set default cache policy (Parse default to "ignoreCache")
@@ -167,7 +179,7 @@ function ParseLib:setCachePolicy(policy)
 end
 
 -- set cache TTL for query results
--- note: Parse takes care of automatically flushing the cache if it takes up too much space
+-- note: Parse cache is a few megabytes and uses LRU ejection. It also takes care of automatically flushing the cache if it takes up too much space.
 -- @param Number	age in seconds to cache results on disk
 function ParseLib:setCacheTTL(age)
 	self.maxCacheAge = age
@@ -327,7 +339,7 @@ function ParseLib:startLogin()
 		return false
 	else
 		-- display Parse login view
-		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher)
+		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher, self.useFacebook, self.useTwitter)
 		getRootViewController():view():addSubview(self.loginView:view())
 		return true
 	end
