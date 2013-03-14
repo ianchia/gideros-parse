@@ -40,7 +40,8 @@ function DefaultSettingsViewController:viewDidAppear()
 	self.super:viewDidAppear()
 	self.pfuser = PFUser:currentUser()
 	
-	if not self.pfuser and not self.dismissed then
+	-- only display if it wasn't dismissed and the user either doesn't exist or is just anonymous
+	if not self.dismissed and (not self.pfuser or PFAnonymousUtils:isLinkedWithUser(self.pfuser)) then
 		print("initializing view...")
 		-- view element enums
 		local viewEnums = {none=0, userpass=1, forgotten=2, login=4, facebook=8, twitter=16, signup=32, dismiss=64, default=103}

@@ -6,6 +6,35 @@ ParseLib
 - dispatches "PFObjectSaveComplete" event (with success, error, object fields) when an async object save is complete
 - dispatches "PFQueryComplete" event (with error, objects fields) when a query has completed
 
+Access Control Lists
+It is also recommended to make use of default ACLs on any PFObjects. See https://www.parse.com/docs/ios_guide#security-recommendations/iOS
+As per the recommendation, we have enabled automatic users and have set currentUser read/write as default settings, and provide readPerms and writePerms params to the createObj() function to help manage changes on a per object basis.
+
+Push Notifications
+Please follow the instructions in the Parse guide () to enable push notifications and register devices.
+This includes adding the following in XCode:
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    ...
+    // Register for push notifications
+    [application registerForRemoteNotificationTypes: 
+                                 UIRemoteNotificationTypeBadge |
+                                 UIRemoteNotificationTypeAlert |             
+                                 UIRemoteNotificationTypeSound];
+    ...
+}
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
+{
+    // Store the deviceToken in the current Installation and save it to Parse.
+    PFInstallation *currentInstallation = [PFInstallation currentInstallation];
+    [currentInstallation setDeviceTokenFromData:deviceToken];
+    [currentInstallation saveInBackground];
+}
+- (void)application:(UIApplication *)application 
+didReceiveRemoteNotification:(NSDictionary *)userInfo {
+    [PFPush handlePush:userInfo];
+}
+
 
 ## MIT License: Copyright (C) 2013. Jamie Hill, Push Poke
 
@@ -45,7 +74,23 @@ ParseLib = Core.class()
 -- [@param] String	Cache policy to use for queries (see setCachePolicy function)
 -- [@param] Number	Max age for query cache
 function ParseLib:init(facebookAppId, twitterKey, twitterSecret, cachePolicy, cacheTTL)
+	-- set automatic creation of anonymous users
+	PFUser:enableAutomaticUser()	
 	self.pfuser = self:currentUser()
+	
+	-- if an id hasn't been assigned (i.e. new user), save to Parse in order to assign an id
+	if not self.pfuser:objectId() then
+		print("Creating a new Anonymous PFUser")
+		local handler = toobjc(function()
+			print("Setting new user installation data")
+			self.installation = PFInstallation:currentInstallation()
+			self.installation:setObject_forKey(self:currentUser(), "user")
+			self.installation:saveEventually()
+		end):asVoidNiladicBlock()
+		self.pfuser:saveEventually(handler)
+	else
+		self.installation = PFInstallation:currentInstallation()
+	end
 
 	-- setup facebook
 	if facebookAppId then
@@ -72,6 +117,10 @@ function ParseLib:init(facebookAppId, twitterKey, twitterSecret, cachePolicy, ca
 	if cacheTTL ~= nil then
 		self:setCacheTTL(cacheTTL)
 	end
+		
+	-- set default ACL for PFObjects to currentUser read/write only
+	local defaultACL = PFACL:ACL()
+	PFACL:setDefaultACL_withAccessForCurrentUser(defaultACL, true)
 	
 	-- dispatcher for handling parse events
 	myDis = Core.class(EventDispatcher)
@@ -89,9 +138,67 @@ end
 
 -- create PFObject
 -- @param String	The className for the object
+-- [@param] Table	An array of users who have read access to the object ("all", "none", userId, or userObj)
+-- [@param] Table	An array of users who have write access to the object ("all", "none", userId, or userObj)
 -- @return PFObject		The object for a given className
-function ParseLib:createObj(className)
-	return PFObject:objectWithClassName(className)
+function ParseLib:createObj(className, readPerms, writePerms)
+	local obj = PFObject:objectWithClassName(className)
+	
+	local acl = PFACL:ACL() -- creates a default ACL object with no permissions
+	local aclCreated = false
+	-- set read perms
+	if readPerms ~= nil then
+		if type(readPerms) == "table" then
+			for k,v in ipairs(readPerms) do
+				if type(v) == "string" then
+					-- assume userId or "all" or "none"
+					if v == "all" then
+						acl:setPublicReadAccess(true)
+					elseif v == "none" then
+						acl:setPublicReadAccess(false)
+					else
+						acl:setReadAccess_forUserId(true, v)
+					end
+				else
+					-- assume PFUser object
+					acl:setReadAccess_forUser(true, v)
+				end
+				aclCreated = true
+			end
+		else
+			-- invalid perms param
+			print("Error: invalid read permissions set on object")
+		end
+	end
+	-- set write perms
+	if writePerms ~= nil then
+		if type(writePerms) == "table" then
+			for k,v in ipairs(writePerms) do
+				if type(v) == "string" then
+					-- assume userId or "all" or "none"
+					if v == "all" then
+						acl:setPublicWriteAccess(true)
+					elseif v == "none" then
+						acl:setPublicWriteAccess(false)
+					else
+						acl:setWriteAccess_forUserId(true, v)
+					end
+				else
+					-- assume PFUser object
+					acl:setWriteAccess_forUser(true, v)
+				end
+				aclCreated = true
+			end
+		else
+			-- invalid perms param
+			print("Error: invalid write permissions set on object")
+		end	
+	end
+	if aclCreated then
+		obj:setACL(acl)
+	end
+	
+	return obj
 end
 
 -- add a key/value pair to a PFObject
@@ -306,7 +413,11 @@ function ParseLib:username()
 	
 	-- return username if found
 	if self.pfuser then
-		return self.pfuser:username()
+		local username = self.pfuser:username()
+		if not username then
+			username = ""
+		end
+		return username
 	else
 		return ""
 	end
@@ -322,27 +433,49 @@ function ParseLib:logout()
 end
 
 -- start social login / signup flow
--- @return Boolean	Whether or not the login flow started. If the user is already logged in, this would return false.
+-- @return Boolean	Whether or not the login flow started. If the user is already authenticated, this would return false.
 function ParseLib:startLogin()
-	-- check if already logged in
-	if self:currentUser() then
+	-- check if already logged in and authenticated (not anon user)
+	if self:currentUser() and not PFAnonymousUtils:isLinkedWithUser(self:currentUser()) then
 		-- already logged in
 		local username = self:username()
 		print("PFUser["..username.."] currently logged in")
-		local alertTitle = "Welcome!"
-		local alertMessage = "You are currently logged in as "..username
-		local alertButton = "Logout"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-		alertView:show()
-		print("logging user out so flow can be re-tested")
-		self:logout()
 		return false
 	else
+		if self:username() ~= "" then
+			local username = self:username()
+			print("Anonymous PFUser["..username.."] starting login")
+		end
+		
 		-- display Parse login view
 		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher, self.useFacebook, self.useTwitter)
 		getRootViewController():view():addSubview(self.loginView:view())
 		return true
 	end
+end
+
+-- send a push notification to a target user
+-- @param PFUser	The recipient of the push notification
+-- @param Table		The data for the push notif {alert="push message", badge=3, sound="soundfilename"}. 
+					Badge can also be "Increment". Also, custom data can be set.
+function ParseLib:sendPush(targetUser, data)
+  -- create installation query
+  local pushQuery = PFInstallation:query()
+  pushQuery:whereKey_equalTo("user", targetUser)
+
+  -- send push notification to query
+  local push = PFPush:init()
+  push:setQuery(pushQuery)
+  push:setData(data)
+  push:setPushToAndroid(false)
+  push:sendPushInBackground()
+}
+
+-- set badge
+-- @param Number	The current value of the icon badge for iOS apps
+function ParseLib:setBadge(value)
+	PFInstallation:currentInstallation():setBadge(value)
+	PFInstallation:currentInstallation():saveInBackground()
 end
 
 -- test fetching data from a logged in Facebook user via Parse
