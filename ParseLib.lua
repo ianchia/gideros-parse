@@ -457,7 +457,7 @@ end
 -- send a push notification to a target user
 -- @param PFUser	The recipient of the push notification
 -- @param Table		The data for the push notif {alert="push message", badge=3, sound="soundfilename"}. 
-					Badge can also be "Increment". Also, custom data can be set.
+--					Badge can also be "Increment". Also, custom data can be set.
 function ParseLib:sendPush(targetUser, data)
   -- create installation query
   local pushQuery = PFInstallation:query()
@@ -469,7 +469,7 @@ function ParseLib:sendPush(targetUser, data)
   push:setData(data)
   push:setPushToAndroid(false)
   push:sendPushInBackground()
-}
+end
 
 -- set badge
 -- @param Number	The current value of the icon badge for iOS apps
