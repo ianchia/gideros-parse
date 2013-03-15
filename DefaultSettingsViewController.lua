@@ -31,16 +31,33 @@ waxClass({"UsernameAlertView", UIAlertView, protocols={"UIAlertViewDelegate"}})
 
 -- init function
 -- @param EventDispatcher	Dispatcher to send events login events back
--- [@param] Boolean		Whether or not to use Facebook. Defaults false.
--- [@param] Boolean		Whether or not to use Twitter. Defaults false.
--- [@param] Boolean		Whether to request a username on successful social login. Defaults true.
-function DefaultSettingsViewController:init(dispatcher, useFacebook, useTwitter, requestUsername)
+-- [@param] Table		Array of config params:
+--						useFacebook = Whether or not to use Facebook. Defaults false.
+-- 						useTwitter = Whether or not to use Twitter. Defaults false.
+--						requestUsername = Whether to request a username on successful social login. Defaults true.
+--						logoImg = path to logo image to use
+--						defaultView = table of login view UI items to show. e.g. {"userpass", "login", "signup"}. See default below.
+function DefaultSettingsViewController:init(dispatcher, config)
+	if not config then config = {} end
+	
 	self.super:init()
 	self.dismissed = false
 	self.dispatcher = dispatcher
-	self.useFacebook = useFacebook
-	self.useTwitter = useTwitter
-	self.requestUsername = requestUsername or true
+	self.useFacebook = config.useFacebook or false
+	self.useTwitter = config.useTwitter or false
+	self.requestUsername = config.requestUsername or true
+	self.logoImg = config.logoImg or "logo.png"
+	self.defaultView = {"userpass","login","signup","dismiss","forgotten"}
+	if self.useFacebook then
+		self.defaultView[#self.defaultView+1] = "facebook"
+	end
+	if self.useTwitter then
+		self.defaultView[#self.defaultView+1] = "twitter"
+	end
+	if config.defaultView then
+		self.defaultView = config.defaultView
+	end
+	
 	return self
 end
 
@@ -66,12 +83,15 @@ function DefaultSettingsViewController:viewDidAppear()
 		
 		-- set UI buttons we want to display
 		-- in this case, default plus Facebook and Twitter if enabled
-		local viewDefaults = viewEnums.userpass + viewEnums.login + viewEnums.signup + viewEnums.dismiss + viewEnums.forgotten
-		if self.useFacebook then
-			viewDefaults = viewDefaults + viewEnums.facebook
-		end
-		if self.useTwitter then
-			viewDefaults = viewDefaults + viewEnums.twitter
+		local viewDefaults = 0
+		for i,v in ipairs(self.defaultView) do
+			if v == "facebook" and self.useFacebook then
+				viewDefaults = viewDefaults + viewEnums.facebook
+			elseif v == "twitter" and self.useTwitter then
+				viewDefaults = viewDefaults + viewEnums.twitter
+			elseif viewEnums[v] ~= nil then
+				viewDefaults = viewDefaults + viewEnums[v]
+			end
 		end
 		self.logInViewController:setFields(viewDefaults)
 		
@@ -289,21 +309,25 @@ function CustomPFLogInViewController:viewDidLoad()
 	-- custom UI
 	print("displaying custom login view")
 	
-	local imgPath = getPathForFile("|R|logo.png")
+	local imgPath = getPathForFile("|R|"..self:delegate().logoImg)
 	local logoImg = UIImage:imageWithContentsOfFile(imgPath)
 	if logoImg ~= nil then
 		local imgView = UIImageView:initWithImage(logoImg)
 		self:logInView():setLogo(imgView)
 	end
 	
-	local signupText = "Sign Up Mate!"
-	self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
-	self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
+	if self:logInView():signUpButton() then
+		local signupText = "Sign Up Mate!"
+		self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
+		self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
+	end
 end
 
 function CustomPFLogInViewController:viewDidLayoutSubviews()
 	-- custom button layout
-	self:logInView():signUpButton():setFrame(CGRect(35,385,250,40))
+	if self:logInView():signUpButton() then
+		self:logInView():signUpButton():setFrame(CGRect(35,385,250,40))
+	end
 end
 
 --

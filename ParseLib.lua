@@ -77,7 +77,7 @@ function ParseLib:init(facebookAppId, twitterKey, twitterSecret, cachePolicy, ca
 	-- set automatic creation of anonymous users
 	PFUser:enableAutomaticUser()	
 	self.pfuser = self:currentUser()
-	
+
 	-- if an id hasn't been assigned (i.e. new user), save to Parse in order to assign an id
 	if not self.pfuser:objectId() then
 		print("Creating a new Anonymous PFUser")
@@ -448,7 +448,7 @@ function ParseLib:startLogin()
 		end
 		
 		-- display Parse login view
-		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher, self.useFacebook, self.useTwitter)
+		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher, {useFacebook=self.useFacebook, useTwitter=self.useTwitter, requestUsername=true})
 		getRootViewController():view():addSubview(self.loginView:view())
 		return true
 	end
