@@ -23,16 +23,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 waxClass({"DefaultSettingsViewController", UIViewController, protocols={"PFLogInViewControllerDelegate", "PFSignUpViewControllerDelegate"}})
 waxClass({"CustomPFLogInViewController", PFLogInViewController})
 waxClass({"CustomPFSignUpViewController", PFSignUpViewController})
+waxClass({"UsernameAlertView", UIAlertView, protocols={"UIAlertViewDelegate"}})
 
 --
 -- DefaultSettingsViewController - main view controller
 --
-function DefaultSettingsViewController:init(dispatcher, useFacebook, useTwitter)
+
+-- init function
+-- @param EventDispatcher	Dispatcher to send events login events back
+-- [@param] Boolean		Whether or not to use Facebook. Defaults false.
+-- [@param] Boolean		Whether or not to use Twitter. Defaults false.
+-- [@param] Boolean		Whether to request a username on successful social login. Defaults true.
+function DefaultSettingsViewController:init(dispatcher, useFacebook, useTwitter, requestUsername)
 	self.super:init()
 	self.dismissed = false
 	self.dispatcher = dispatcher
 	self.useFacebook = useFacebook
 	self.useTwitter = useTwitter
+	self.requestUsername = requestUsername or true
 	return self
 end
 
@@ -85,6 +93,13 @@ function DefaultSettingsViewController:isViewVisible()
 	end
 end
 
+-- called after a successful signup
+function DefaultSettingsViewController:successfulSignUp()
+	-- also dismiss the login view after a sign up
+	self.pfuser = PFUser:currentUser()
+	self:logInViewController_didLogInUser(self.logInViewController, self.pfuser)
+end
+
 --
 -- LOG IN VIEW CONTROLLER DELEGATE
 --
@@ -108,18 +123,92 @@ end
 -- sent to the delegate when the user is logged in
 function DefaultSettingsViewController:logInViewController_didLogInUser(self, user)
 	print("user successfully logged in!")
-	local alertTitle = "Success!"
-	local alertMessage = "You are now logged in."
-	local alertButton = "OK"
-	local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-	alertView:show()
 
+	local loginWithFacebook = PFFacebookUtils:isLinkedWithUser(user)
+	local loginWithTwitter = PFTwitterUtils:isLinkedWithUser(user) 
+
+	-- check if we should request a new username to go with social account
+	if user:objectForKey("hasSetUsername") ~= 1 and self:delegate().requestUsername and (loginWithFacebook or loginWithTwitter) then	
+		-- create a username input dialog
+		function UsernameAlertView:init(userObj)
+			self.userObj = userObj
+			self:initWithFrame()
+			self:setDelegate(self)
+			self:setTitle("Choose a Username")
+			self:setMessage(" ")
+			self:addButtonWithTitle("OK")
+			local nameField = UITextField:initWithFrame(CGRect(20,45,245,25))
+			nameField:setBackgroundColor(UIColor:whiteColor())
+			nameField:becomeFirstResponder()
+			local defaultUsername = "anon_" .. math.random(1000,9999)
+			nameField:setText(defaultUsername)
+			self.nameField = nameField
+			self:addSubview(self.nameField)
+			return self
+		end
+		
+		function UsernameAlertView:alertView_clickedButtonAtIndex(idx)
+			local text = self:delegate().nameField:text()
+			if text ~= nil then
+				print("Username inputted = "..text)
+			end
+
+			-- repop if empty input
+			if text == "" then
+				local newAlert = UsernameAlertView:init(self.userObj)
+				newAlert:show()
+			else
+				print("querying if username already exists")
+				local query = PFUser:query()
+				query:whereKey_equalTo("username", text)
+				local obj = query:getFirstObject()
+				
+				if not obj then
+					-- save new username
+					print("saving username")
+					self.userObj:setUsername(text)
+					self.userObj:setObject_forKey(1, "hasSetUsername")
+					self.userObj:saveInBackground()
+					
+					-- show success alert
+					local alertTitle = "Success!"
+					local alertMessage = "You are now logged in."
+					local alertButton = "OK"
+					local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+					alertView:show()
+				else
+					-- duplicate username
+					print("duplicate username chosen")
+					local alertTitle = "Try Again"
+					local alertMessage = "Username already taken. Please try another."
+					local alertButton = "OK"
+					local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+					alertView:show()
+					
+					local newAlert = UsernameAlertView:init(self.userObj)
+					newAlert:show()
+				end
+			end
+		end
+		
+		-- request a username to be set
+		local alert = UsernameAlertView:init(user)
+		alert:show()
+	else
+		-- just display a success dialog
+		local alertTitle = "Success!"
+		local alertMessage = "You are now logged in."
+		local alertButton = "OK"
+		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+		alertView:show()
+	end
+	
 	-- hide login view
 	local handler = toobjc(
-        function()
-            local completeEvent = Event.new("PFLoginComplete")
+		function()
+			local completeEvent = Event.new("PFLoginComplete")
 			self:delegate().dispatcher:dispatchEvent(completeEvent)
-        end):asVoidNiladicBlock()
+		end):asVoidNiladicBlock()
 	
 	self:dismissViewControllerAnimated_completion(true, handler)
 end
@@ -170,14 +259,19 @@ end
 
 -- sent to the delegate when the signup is successful
 function DefaultSettingsViewController:signUpViewController_didSignUpUser(self, user)
-	print("user successfull signed up!")
-	-- hide signup view
-	self:dismissViewControllerAnimated_completion(true, nil)
+	print("user successfully signed up!")
+	-- has set username
+	user:setObject_forKey(1, "hasSetUsername")
+	user:saveInBackground()
+	-- hide signup and login view
+	self:dismissViewControllerAnimated_completion(false, nil)
+	self:delegate():successfulSignUp()
 end
 
 -- sent to the delegate when the user signup fails
 function DefaultSettingsViewController:signUpViewController_didFailToSignUpWithError(self, error)
 	print("user failed to sign up...")
+	print(error)
 end
 
 -- sent to the delegate when the user cancels the signup view
