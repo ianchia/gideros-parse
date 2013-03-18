@@ -436,7 +436,7 @@ end
 -- @return Boolean	Whether or not the login flow started. If the user is already authenticated, this would return false.
 function ParseLib:startLogin()
 	-- check if already logged in and authenticated (not anon user)
-	if self:currentUser() and not PFAnonymousUtils:isLinkedWithUser(self:currentUser()) then
+	if self:currentUser() and self:currentUser():objectForKey("hasSetUsername") == 1 then
 		-- already logged in
 		local username = self:username()
 		print("PFUser["..username.."] currently logged in")
@@ -448,7 +448,7 @@ function ParseLib:startLogin()
 		end
 		
 		-- display Parse login view
-		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher, {useFacebook=self.useFacebook, useTwitter=self.useTwitter, requestUsername=true})
+		self.loginView = DefaultSettingsViewController:init(self.eventDispatcher, {useFacebook=self.useFacebook, useTwitter=self.useTwitter, requestUsername=true, fbPermissions={"email"}})
 		getRootViewController():view():addSubview(self.loginView:view())
 		return true
 	end

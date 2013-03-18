@@ -25,6 +25,68 @@ waxClass({"CustomPFLogInViewController", PFLogInViewController})
 waxClass({"CustomPFSignUpViewController", PFSignUpViewController})
 waxClass({"UsernameAlertView", UIAlertView, protocols={"UIAlertViewDelegate"}})
 
+-- Username creation dialog
+function UsernameAlertView:init(userObj)
+	self.userObj = userObj
+	self:initWithFrame()
+	self:setDelegate(self)
+	self:setTitle("Choose a Username")
+	self:setMessage(" ")
+	self:addButtonWithTitle("OK")
+	local nameField = UITextField:initWithFrame(CGRect(20,45,245,25))
+	nameField:setBackgroundColor(UIColor:whiteColor())
+	nameField:becomeFirstResponder()
+	local defaultUsername = "anon_" .. math.random(1000,9999)
+	nameField:setText(defaultUsername)
+	self.nameField = nameField
+	self:addSubview(self.nameField)
+	return self
+end
+
+function UsernameAlertView:alertView_clickedButtonAtIndex(idx)
+	local text = self:delegate().nameField:text()
+	if text ~= nil then
+		print("Username inputted = "..text)
+	end
+
+	-- repop if empty input
+	if text == "" then
+		local newAlert = UsernameAlertView:init(self.userObj)
+		newAlert:show()
+	else
+		print("querying if username already exists")
+		local query = PFUser:query()
+		query:whereKey_equalTo("username", text)
+		local obj = query:getFirstObject()
+		
+		if not obj then
+			-- save new username
+			print("saving username")
+			self.userObj:setUsername(text)
+			self.userObj:setObject_forKey(1, "hasSetUsername")
+			self.userObj:saveInBackground()
+			
+			-- show success alert
+			local alertTitle = "Success!"
+			local alertMessage = "You are now logged in."
+			local alertButton = "OK"
+			local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+			alertView:show()
+		else
+			-- duplicate username
+			print("duplicate username chosen")
+			local alertTitle = "Try Again"
+			local alertMessage = "Username already taken. Please try another."
+			local alertButton = "OK"
+			local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+			alertView:show()
+			
+			local newAlert = UsernameAlertView:init(self.userObj)
+			newAlert:show()
+		end
+	end
+end
+		
 --
 -- DefaultSettingsViewController - main view controller
 --
@@ -47,6 +109,7 @@ function DefaultSettingsViewController:init(dispatcher, config)
 	self.useTwitter = config.useTwitter or false
 	self.requestUsername = config.requestUsername or true
 	self.logoImg = config.logoImg or "logo.png"
+	self.fbPermissions = config.fbPermissions or {}
 	self.defaultView = {"userpass","login","signup","dismiss","forgotten"}
 	if self.useFacebook then
 		self.defaultView[#self.defaultView+1] = "facebook"
@@ -65,8 +128,9 @@ function DefaultSettingsViewController:viewDidAppear()
 	self.super:viewDidAppear()
 	self.pfuser = PFUser:currentUser()
 	
-	-- only display if it wasn't dismissed and the user either doesn't exist or is just anonymous
-	if not self.dismissed and (not self.pfuser or PFAnonymousUtils:isLinkedWithUser(self.pfuser)) then
+	-- only display if it wasn't dismissed and the user either doesn't exist or is just anonymous (hasn't set a username)
+	-- NOTE: PFAnonymousUtils:isLinkedWithUser() seems to report incorrectly on anonymous status, so isn't being used
+	if not self.dismissed and (not self.pfuser or self.pfuser:objectForKey("hasSetUsername") ~= 1) then
 		print("initializing view...")
 		-- view element enums
 		local viewEnums = {none=0, userpass=1, forgotten=2, login=4, facebook=8, twitter=16, signup=32, dismiss=64, default=103}
@@ -77,8 +141,7 @@ function DefaultSettingsViewController:viewDidAppear()
 		
 		-- init for Facebook
 		if self.useFacebook then
-			local fbPerms = {"user_about_me", "user_location", "friends_about_me"}
-			self.logInViewController:setFacebookPermissions(fbPerms)
+			self.logInViewController:setFacebookPermissions(self.fbPermissions)
 		end
 		
 		-- set UI buttons we want to display
@@ -149,73 +212,13 @@ function DefaultSettingsViewController:logInViewController_didLogInUser(self, us
 
 	-- check if we should request a new username to go with social account
 	if user:objectForKey("hasSetUsername") ~= 1 and self:delegate().requestUsername and (loginWithFacebook or loginWithTwitter) then	
-		-- create a username input dialog
-		function UsernameAlertView:init(userObj)
-			self.userObj = userObj
-			self:initWithFrame()
-			self:setDelegate(self)
-			self:setTitle("Choose a Username")
-			self:setMessage(" ")
-			self:addButtonWithTitle("OK")
-			local nameField = UITextField:initWithFrame(CGRect(20,45,245,25))
-			nameField:setBackgroundColor(UIColor:whiteColor())
-			nameField:becomeFirstResponder()
-			local defaultUsername = "anon_" .. math.random(1000,9999)
-			nameField:setText(defaultUsername)
-			self.nameField = nameField
-			self:addSubview(self.nameField)
-			return self
-		end
-		
-		function UsernameAlertView:alertView_clickedButtonAtIndex(idx)
-			local text = self:delegate().nameField:text()
-			if text ~= nil then
-				print("Username inputted = "..text)
-			end
-
-			-- repop if empty input
-			if text == "" then
-				local newAlert = UsernameAlertView:init(self.userObj)
-				newAlert:show()
-			else
-				print("querying if username already exists")
-				local query = PFUser:query()
-				query:whereKey_equalTo("username", text)
-				local obj = query:getFirstObject()
-				
-				if not obj then
-					-- save new username
-					print("saving username")
-					self.userObj:setUsername(text)
-					self.userObj:setObject_forKey(1, "hasSetUsername")
-					self.userObj:saveInBackground()
-					
-					-- show success alert
-					local alertTitle = "Success!"
-					local alertMessage = "You are now logged in."
-					local alertButton = "OK"
-					local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-					alertView:show()
-				else
-					-- duplicate username
-					print("duplicate username chosen")
-					local alertTitle = "Try Again"
-					local alertMessage = "Username already taken. Please try another."
-					local alertButton = "OK"
-					local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
-					alertView:show()
-					
-					local newAlert = UsernameAlertView:init(self.userObj)
-					newAlert:show()
-				end
-			end
-		end
-		
 		-- request a username to be set
 		local alert = UsernameAlertView:init(user)
 		alert:show()
 	else
 		-- just display a success dialog
+		user:setObject_forKey(1, "hasSetUsername")
+		user:saveInBackground()
 		local alertTitle = "Success!"
 		local alertMessage = "You are now logged in."
 		local alertButton = "OK"
@@ -317,7 +320,7 @@ function CustomPFLogInViewController:viewDidLoad()
 	end
 	
 	if self:logInView():signUpButton() then
-		local signupText = "Sign Up Mate!"
+		local signupText = "Create Account"
 		self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
 		self:logInView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
 	end
@@ -346,7 +349,7 @@ function CustomPFSignUpViewController:viewDidLoad()
 		self:signUpView():setLogo(imgView)
 	end
 	
-	local signupText = "Sign Up Mate!"
+	local signupText = "Create Account"
 	self:signUpView():signUpButton():setTitle_forState(signupText, UIControlStateNormal)
 	self:signUpView():signUpButton():setTitle_forState(signupText, UIControlStateHighlighted)
 end
