@@ -132,6 +132,7 @@ function DefaultSettingsViewController:viewDidAppear()
 	-- NOTE: PFAnonymousUtils:isLinkedWithUser() seems to report incorrectly on anonymous status, so isn't being used
 	if not self.dismissed and (not self.pfuser or self.pfuser:objectForKey("hasSetUsername") ~= 1) then
 		print("initializing view...")
+		
 		-- view element enums
 		local viewEnums = {none=0, userpass=1, forgotten=2, login=4, facebook=8, twitter=16, signup=32, dismiss=64, default=103}
 		
@@ -165,6 +166,10 @@ function DefaultSettingsViewController:viewDidAppear()
 		
 		-- display
 		self:presentViewController_animated_completion(self.logInViewController, true, nil)
+	else
+		if (stats) then
+			stats:log("loginScreenNotShown", {objectId=tostring(self.pfuser:objectId())})
+		end
 	end
 end
 
@@ -208,7 +213,11 @@ function DefaultSettingsViewController:logInViewController_didLogInUser(self, us
 	print("user successfully logged in!")
 
 	local loginWithFacebook = PFFacebookUtils:isLinkedWithUser(user)
-	local loginWithTwitter = PFTwitterUtils:isLinkedWithUser(user) 
+	local loginWithTwitter = PFTwitterUtils:isLinkedWithUser(user)
+	
+	if (stats) then
+		stats:log("loginSuccess", {withFacebook=tostring(loginWithFacebook), withTwitter=tostring(loginWithTwitter)})
+	end
 
 	-- check if we should request a new username to go with social account
 	if user:objectForKey("hasSetUsername") ~= 1 and self:delegate().requestUsername and (loginWithFacebook or loginWithTwitter) then	
@@ -239,10 +248,16 @@ end
 -- sent to the delegate when the user fails to login
 function DefaultSettingsViewController:logInViewController_didFailToLogInWithError(self, error)
 	print("user failed to log in...")
+	if (stats) then
+		stats:log("loginError", {error=tostring(error)})
+	end
 end
 
 function DefaultSettingsViewController:logInViewControllerDidCancelLogIn(self)
 	print("user dismissed login view")
+	if (stats) then
+		stats:log("clickDismissLoginScreen")
+	end
 	-- mark as dismissed
 	self:delegate().dismissed = true
 	-- send cancelled event
@@ -283,6 +298,9 @@ end
 -- sent to the delegate when the signup is successful
 function DefaultSettingsViewController:signUpViewController_didSignUpUser(self, user)
 	print("user successfully signed up!")
+	if (stats) then
+		stats:log("signupSuccess", {objectId=user:objectId()})
+	end
 	-- has set username
 	user:setObject_forKey(1, "hasSetUsername")
 	user:saveInBackground()
@@ -295,11 +313,17 @@ end
 function DefaultSettingsViewController:signUpViewController_didFailToSignUpWithError(self, error)
 	print("user failed to sign up...")
 	print(error)
+	if (stats) then
+		stats:log("signupError", {error=tostring(error)})
+	end
 end
 
 -- sent to the delegate when the user cancels the signup view
 function DefaultSettingsViewController:signUpViewControllerDidCancelSignUp(self)
 	print("user dismissed signup view")
+	if (stats) then
+		stats:log("clickDismissSignupScreen")
+	end
 	-- signup view will be hidden
 end
 
@@ -308,6 +332,10 @@ end
 --
 function CustomPFLogInViewController:viewDidLoad()
 	self.super:viewDidLoad()
+	
+	if (stats) then
+		stats:log("viewPageLoginScreen")
+	end
 	
 	-- custom UI
 	print("displaying custom login view")
@@ -338,6 +366,10 @@ end
 --
 function CustomPFSignUpViewController:viewDidLoad()
 	self.super:viewDidLoad()
+	
+	if (stats) then
+		stats:log("viewPageSignupScreen")
+	end
 	
 	-- custom UI
 	print("displaying custom signup view")
