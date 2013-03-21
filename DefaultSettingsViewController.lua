@@ -166,7 +166,7 @@ function DefaultSettingsViewController:viewDidAppear()
 		
 		-- display
 		self:presentViewController_animated_completion(self.logInViewController, true, nil)
-	else
+	elseif not self.dismissed then
 		if (stats) then
 			stats:log("loginScreenNotShown", {objectId=tostring(self.pfuser:objectId())})
 		end
