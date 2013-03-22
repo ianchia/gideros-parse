@@ -232,6 +232,14 @@ function ParseLib:deleteObj(obj)
 	end
 end
 
+-- refresh a PFObject from the serverAddress
+-- @param PFObject	The object to refresh
+function ParseLib:refresh(obj)
+	if obj then
+		obj:refresh()
+	end
+end
+
 -- save PFObject
 -- @param PFObject	The object to save
 -- [@param] Boolean		Whether to save the object on a background thread (async). Default true. 
