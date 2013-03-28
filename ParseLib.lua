@@ -81,15 +81,25 @@ function ParseLib:init(facebookAppId, twitterKey, twitterSecret, cachePolicy, ca
 	-- if an id hasn't been assigned (i.e. new user), save to Parse in order to assign an id
 	if not self.pfuser:objectId() then
 		print("Creating a new Anonymous PFUser")
-		local handler = toobjc(function()
-			print("Setting new user installation data")
-			self.installation = PFInstallation:currentInstallation()
-			self.installation:setObject_forKey(self:currentUser(), "user")
-			self.installation:saveEventually()
-		end):asVoidNiladicBlock()
-		self.pfuser:saveEventually(handler)
+		local handler = toobjc(function(succeeded, error)
+			if error then
+				print("Error saving anonymous user!")
+				stats:error("errorSavingAnonUser")
+			else
+				print("Setting new user installation data")
+				self.installation = PFInstallation:currentInstallation()
+				self.installation:setObject_forKey(self:currentUser(), "user")
+				self.installation:saveEventually()
+			end
+		end):asVoidDyadicBlockBO()
+		self.pfuser:saveInBackgroundWithBlock(handler)
 	else
 		self.installation = PFInstallation:currentInstallation()
+		if not self.installation:objectId() or not self.installation:objectForKey("user") then
+			print("installation does not appear to have been saved. Saving...")
+			self.installation:setObject_forKey(self:currentUser(), "user")
+			self.installation:saveInBackground()
+		end
 	end
 
 	-- setup facebook

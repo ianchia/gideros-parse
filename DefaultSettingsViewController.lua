@@ -70,7 +70,7 @@ function UsernameAlertView:alertView_clickedButtonAtIndex(idx)
 			local alertTitle = "Success!"
 			local alertMessage = "You are now logged in."
 			local alertButton = "OK"
-			local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+			local alertView = AlertDialog.new(alertTitle, alertMessage, alertButton)
 			alertView:show()
 		else
 			-- duplicate username
@@ -78,7 +78,7 @@ function UsernameAlertView:alertView_clickedButtonAtIndex(idx)
 			local alertTitle = "Try Again"
 			local alertMessage = "Username already taken. Please try another."
 			local alertButton = "OK"
-			local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+			local alertView = AlertDialog.new(alertTitle, alertMessage, alertButton)
 			alertView:show()
 			
 			local newAlert = UsernameAlertView:init(self.userObj)
@@ -200,7 +200,7 @@ function DefaultSettingsViewController:logInViewController_shouldBeginLogInWithU
 		local alertTitle = "Missing Information"
 		local alertMessage = "Make sure you fill out all of the information!"
 		local alertButton = "OK"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+		local alertView = AlertDialog.new(alertTitle, alertMessage, alertButton)
 		alertView:show()
 		return false
 	else
@@ -231,7 +231,7 @@ function DefaultSettingsViewController:logInViewController_didLogInUser(self, us
 		local alertTitle = "Success!"
 		local alertMessage = "You are now logged in."
 		local alertButton = "OK"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+		local alertView = AlertDialog.new(alertTitle, alertMessage, alertButton)
 		alertView:show()
 	end
 	
@@ -288,7 +288,7 @@ function DefaultSettingsViewController:signUpViewController_shouldBeginSignUp(se
 		local alertTitle = "Missing Information"
 		local alertMessage = "Make sure you fill out all of the information!"
 		local alertButton = "OK"
-		local alertView = UIAlertView:initWithTitle_message_delegate_cancelButtonTitle_otherButtonTitles(alertTitle, alertMessage, nil, alertButton, nil)
+		local alertView = AlertDialog.new(alertTitle, alertMessage, alertButton)
 		alertView:show()
 	end
 	
