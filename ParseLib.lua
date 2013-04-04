@@ -479,8 +479,16 @@ end
 function ParseLib:sendPush(targetUser, data)
   -- create installation query
   local pushQuery = PFInstallation:query()
-  pushQuery:whereKey_equalTo("user", targetUser)
-
+  if type(targetUser) == "string" then
+	-- assume targetUser is a user objectId
+	local userQuery = PFUser:query()
+	userQuery:whereKey_equalTo("objectId", targetUser)
+	pushQuery:whereKey_matchesQuery("user", userQuery)	 
+  else
+	-- assume targetUser is a PFUser object
+	pushQuery:whereKey_equalTo("user", targetUser)
+  end
+  
   -- send push notification to query
   local push = PFPush:init()
   push:setQuery(pushQuery)
